@@ -1,3 +1,4 @@
+import asyncio
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 import os
@@ -36,9 +37,9 @@ app = Flask(__name__)
 def health():
     # Check if the Telegram client is connected
     if client.is_connected():
-        return jsonify({'status': 'connected to Telegram'})
+        return jsonify({'status': True})
     else:
-        return jsonify({'status': 'disconnected from Telegram'})
+        return jsonify({'status': False})
 
 # Create a new TelegramClient instance
 client = TelegramClient(session_file, api_id, api_hash)
@@ -54,17 +55,20 @@ async def handle_message(event):
     except Exception as e:
         print(f'Error sending POST request: {e}')
 
-
-async def main():
-    # Start the client
+async def telethon_task():
+    # Start the Telethon client
     await client.start()
-    print('Client started')
+    print('Telethon client started')
 
     # Listen for incoming messages
     await client.run_until_disconnected()
 
-if __name__ == '__main__':
-    # Run the main function
-    client.loop.run_until_complete(main())
+def run_flask():
     # Run Flask app on the specified port
     app.run(port=flask_port)
+
+if __name__ == '__main__':
+    # Create and run event loop
+    loop = asyncio.get_event_loop()
+    tasks = [telethon_task(), loop.run_in_executor(None, run_flask)]
+    loop.run_until_complete(asyncio.gather(*tasks))
